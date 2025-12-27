@@ -45,9 +45,7 @@ public static class CharacterPatches {
 
     private static void ProcessRandomFaints(Character character) {
         if (character.data.dead || character.data.fullyPassedOut || character.data.passedOut) return;
-
-        if (!Config.Instance.CanFaintWhileClimbing.Value &&
-            (character.data.isClimbing || character.data.isRopeClimbing || character.data.isVineClimbing)) return;
+        if (!Config.Instance.CanFaintWhileClimbing.Value && (character.data.isClimbing || character.data.isRopeClimbing || character.data.isVineClimbing)) return;
 
         float chanceThisFrame = Config.Instance.FaintChancePerSecond.Value * Time.deltaTime;
         if (UnityEngine.Random.Range(0f, 1f) < chanceThisFrame) {
