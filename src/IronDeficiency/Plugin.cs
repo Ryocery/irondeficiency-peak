@@ -9,7 +9,7 @@ namespace IronDeficiency;
 [BepInAutoPlugin]
 public partial class Plugin : BaseUnityPlugin {
     public static Plugin Instance { get; private set; } = null!;
-    public static new ManualLogSource Logger { get; private set; } = null!;
+    public new static ManualLogSource Logger { get; private set; } = null!;
     public Config ModConfig { get; private set; } = null!;
 
     private Harmony _harmony = null!;
