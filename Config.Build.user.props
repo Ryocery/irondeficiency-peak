@@ -1,0 +1,25 @@
+<Project>
+
+  <PropertyGroup>
+    <GameInstallDir>/mnt/storage/SteamLibrary/steamapps/common/PEAK/</GameInstallDir>
+    <PluginsDir>/home/youri/.local/share/com.kesomannen.gale/peak/profiles/Default/BepInEx/plugins/</PluginsDir>
+  </PropertyGroup>
+
+  <Target Name="DeployFiles" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <PropertyGroup>
+      <DeployPath>$([MSBuild]::NormalizeDirectory($(PluginsDir)))$(AssemblyTitle)/</DeployPath>
+    </PropertyGroup>
+    
+    <Message Text="Deploy → $(DeployPath)$(TargetFileName)" Importance="High" />
+    
+    <Error
+      Text="Plugins directory '$(PluginsDir)' doesn't exist! Configure PluginsDir in Config.Build.user.props to point to your BepInEx/plugins/ directory."
+      Condition="!Exists('$(PluginsDir)')"
+    />
+      
+    <MakeDir Directories="$(DeployPath)" Condition="!Exists('$(DeployPath)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployPath)" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="$(DeployPath)" Condition="Exists('$(TargetDir)$(TargetName).pdb')"/>
+  </Target>
+    
+</Project>
