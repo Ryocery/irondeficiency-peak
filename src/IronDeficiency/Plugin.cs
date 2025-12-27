@@ -47,33 +47,32 @@ public partial class Plugin : BaseUnityPlugin {
 }
 
 public class IronDeficiencyRPCHandler : MonoBehaviourPun {
-    private Character? character;
+    private Character? _character;
 
     private void Start() {
-        character = GetComponent<Character>();
+        _character = GetComponent<Character>();
     }
     
     [PunRPC]
     public void PlayTripSound() {
         AudioClip? sound = IronDeficiencyPatch.GetTripSound();
-        if (sound != null) {
-            if (character != null) AudioSource.PlayClipAtPoint(sound, character.Center, 0.7f);
-        }
+        if (!sound) return;
+        if (_character) AudioSource.PlayClipAtPoint(sound, _character.Center, 0.7f);
     }
     
     [PunRPC]
     public void PlayFaintSound() {
         AudioClip? sound = IronDeficiencyPatch.GetFaintSound();
-        if (sound != null) {
-            if (character != null) AudioSource.PlayClipAtPoint(sound, character.Center, 0.7f);
-        }
+        
+        if (!sound) return;
+        if (_character) AudioSource.PlayClipAtPoint(sound, _character.Center, 0.7f);
     }
 }
 
 [HarmonyPatch(typeof(Character))]
 public class IronDeficiencyPatch {
-    private static AudioClip? faintSound;
-    private static AudioClip? tripSound;
+    private static AudioClip? _faintSound;
+    private static AudioClip? _tripSound;
     
     [HarmonyPostfix]
     [HarmonyPatch("Awake")]
@@ -123,33 +122,33 @@ public class IronDeficiencyPatch {
             Plugin.Log.LogInfo($"Random trip triggered for {character.characterName}!");
             
             IronDeficiencyRPCHandler? rpcHandler = character.GetComponent<IronDeficiencyRPCHandler>();
-            if (rpcHandler != null) {
+            if (rpcHandler) {
                 rpcHandler.photonView.RPC("PlayTripSound", RpcTarget.All);
             } else {
                 AudioClip? sound = GetTripSound();
-                if (sound != null) {
+                if (sound) {
                     AudioSource.PlayClipAtPoint(sound, character.Center, 0.7f);
                 }
             }
             
             MethodInfo? getBodypartRigMethod = typeof(Character).GetMethod("GetBodypartRig", BindingFlags.NonPublic | BindingFlags.Instance);
             MethodInfo? fallMethod = typeof(Character).GetMethod("Fall", BindingFlags.NonPublic | BindingFlags.Instance);
-        
-            if (getBodypartRigMethod != null && fallMethod != null) {
-                Rigidbody? footR = getBodypartRigMethod.Invoke(character, [BodypartType.Foot_R]) as Rigidbody;
-                Rigidbody? footL = getBodypartRigMethod.Invoke(character, [BodypartType.Foot_L]) as Rigidbody;
-                Rigidbody? hip = getBodypartRigMethod.Invoke(character, [BodypartType.Hip]) as Rigidbody;
-                Rigidbody? head = getBodypartRigMethod.Invoke(character, [BodypartType.Head]) as Rigidbody;
+
+            if (getBodypartRigMethod == null || fallMethod == null) return;
             
-                fallMethod.Invoke(character, [2f, 0f]);
+            Rigidbody? footR = getBodypartRigMethod.Invoke(character, [BodypartType.Foot_R]) as Rigidbody;
+            Rigidbody? footL = getBodypartRigMethod.Invoke(character, [BodypartType.Foot_L]) as Rigidbody;
+            Rigidbody? hip = getBodypartRigMethod.Invoke(character, [BodypartType.Hip]) as Rigidbody;
+            Rigidbody? head = getBodypartRigMethod.Invoke(character, [BodypartType.Head]) as Rigidbody;
             
-                Vector3 forward = character.data.lookDirection_Flat;
-                footR?.AddForce((forward + Vector3.up) * 200f, ForceMode.Impulse);
-                footL?.AddForce((forward + Vector3.up) * 200f, ForceMode.Impulse);
-                hip?.AddForce(Vector3.up * 1500f, ForceMode.Impulse);
-                head?.AddForce(forward * -300f, ForceMode.Impulse);
-            }
+            fallMethod.Invoke(character, [2f, 0f]);
             
+            Vector3 forward = character.data.lookDirection_Flat;
+            footR?.AddForce((forward + Vector3.up) * 200f, ForceMode.Impulse);
+            footL?.AddForce((forward + Vector3.up) * 200f, ForceMode.Impulse);
+            hip?.AddForce(Vector3.up * 1500f, ForceMode.Impulse);
+            head?.AddForce(forward * -300f, ForceMode.Impulse);
+
         } catch (Exception ex) {
             Plugin.Log.LogError($"Exception in random trip: {ex}");
         }
@@ -160,11 +159,11 @@ public class IronDeficiencyPatch {
             Plugin.Log.LogInfo($"Random faint triggered for {character.characterName}!");
             
             IronDeficiencyRPCHandler? rpcHandler = character.GetComponent<IronDeficiencyRPCHandler>();
-            if (rpcHandler != null) {
+            if (rpcHandler) {
                 rpcHandler.photonView.RPC("PlayFaintSound", RpcTarget.All);
             } else {
                 AudioClip? sound = GetFaintSound();
-                if (sound != null) {
+                if (sound) {
                     AudioSource.PlayClipAtPoint(sound, character.Center, 0.7f);
                 }
             }
@@ -176,33 +175,32 @@ public class IronDeficiencyPatch {
     }
     
     public static AudioClip? GetFaintSound() {
-        if (faintSound == null) {
-            string? modPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            if (modPath != null) {
-                string audioPath = Path.Combine(modPath, "sounds", "faint_sound.wav");
-                if (File.Exists(audioPath)) {
-                    try {
-                        byte[] audioData = File.ReadAllBytes(audioPath);
-                        faintSound = WavUtility.ToAudioClip(audioData, "faint_sound");
-                        if (faintSound != null) {
-                            return faintSound;
-                        }
-                    } catch (Exception ex) {
-                        Plugin.Log.LogError($"Failed to load custom sound: {ex}");
-                    }
-                }
+        if (_faintSound) return _faintSound;
+        string? modPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        
+        if (modPath == null) return _faintSound;
+        string audioPath = Path.Combine(modPath, "sounds", "faint_sound.wav");
+        
+        if (!File.Exists(audioPath)) return _faintSound;
+        
+        try {
+            byte[] audioData = File.ReadAllBytes(audioPath);
+            _faintSound = WavUtility.ToAudioClip(audioData, "faint_sound");
+            if (_faintSound != null) {
+                return _faintSound;
             }
+        } catch (Exception ex) {
+            Plugin.Log.LogError($"Failed to load custom sound: {ex}");
         }
-        return faintSound;
+        return _faintSound;
     }
     
     public static AudioClip? GetTripSound() {
-        if (tripSound == null) {
-            AudioClip[] allClips = Resources.FindObjectsOfTypeAll<AudioClip>();
-            tripSound = allClips.FirstOrDefault(clip => clip.name == "Au_Slip1");
-        }
+        if (_tripSound) return _tripSound;
         
-        return tripSound;
+        AudioClip[] allClips = Resources.FindObjectsOfTypeAll<AudioClip>();
+        _tripSound = allClips.FirstOrDefault(clip => clip.name == "Au_Slip1");
+        return _tripSound;
     }
 }
 
@@ -213,7 +211,7 @@ public static class WavUtility {
             int channels = BitConverter.ToInt16(fileBytes, 22);
             int bitsPerSample = BitConverter.ToInt16(fileBytes, 34);
             
-            int headerSize = 44;
+            const int headerSize = 44;
             int bytesPerSample = bitsPerSample / 8;
             int totalSamples = (fileBytes.Length - headerSize) / bytesPerSample;
             int samplesPerChannel = totalSamples / channels;
